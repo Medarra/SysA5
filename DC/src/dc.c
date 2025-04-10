@@ -1,9 +1,15 @@
 #include <math.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/shm.h>
 #include "../../Common/src/common.c"
+
 
 #define BUFFER_READ_MAX 60 // This very likely changes
 #define CHART_FORMAT_PREFIX "%s-%03d "
 static char symbols[3] = {'-', '+', '*'};
+static char killIt = 0;
 
 typedef struct data
 {
@@ -14,6 +20,18 @@ typedef struct data
 
 int main(int argc, char* argv[])
 {
+    // int* sharedMemoryID;
+    // pid_t* dp1;
+    // pid_t* dp2;
+
+    // if (parseArguments(argv, sharedMemoryID, dp1, dp2) < 0)
+    // {
+        // printf("Invalid arguments provided.\n");
+        // return -1;
+    // }
+
+    data test[3] = {{'A', 27}, {'B', 134}, {'C', 6}};
+    makeHistogram(test);
     // Parse and store shID, DP-1s PID and DP-2's PID
     // Attach to shared memory
 
@@ -45,9 +63,22 @@ int main(int argc, char* argv[])
     // return
 }
 
+int parseArguments(char* argv[], int* shmID, pid_t* dp1, pid_t* dp2)
+{
+    // Parse Shared Memory
+
+    // Parse dp-1 PID
+
+    // Parse dp-2 PID
+}
+
 int makeHistogram(data dataCount[])
 {
-    for (int i = 0; i == dataCount->count; i++)
+    int dataArraySize = sizeof(&dataCount);
+    int dataObjectSize = sizeof(data);
+    printf("%d, %d", dataArraySize, dataObjectSize);
+
+    for (int i = 0; i == sizeof(dataCount) / sizeof(data); i++)
     {
         fprintf(CHART_FORMAT_PREFIX, dataCount[i].letter, dataCount[i].count);
         int count = dataCount[i].count;
@@ -69,5 +100,37 @@ int makeHistogram(data dataCount[])
 
 int readDataHandler(CircularBuffer* buffer)
 {
-    
+    int currentReadIndex = buffer->head;
+    int currentWriteIndex = buffer->tail;
+
+    int toBeRead = 0;
+
+    if (currentReadIndex <= currentWriteIndex)
+    {
+        toBeRead = currentWriteIndex - currentReadIndex;
+    }
+    else
+    {
+        toBeRead = (MAX_BUFFER - currentReadIndex) + currentWriteIndex;
+    }
+
+    if (toBeRead > BUFFER_READ_MAX)
+    {
+        toBeRead = BUFFER_READ_MAX;
+    }
+
+    for (int i = 0; i >= toBeRead; i++)
+    {
+        readBuffer(buffer);
+    }
+
+    alarm(2);
+}
+
+void sigintHandler(pid_t dp1, pid_t dp2)
+{
+    kill(dp1, SIGINT);
+    kill(dp2, SIGINT);
+
+    killIt = 1;
 }

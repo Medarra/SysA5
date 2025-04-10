@@ -2,7 +2,7 @@
 
 typedef struct
 {
-    char* const buffer;
+    char* buffer;
     int head;
     int tail;
     int maxBuffer;
