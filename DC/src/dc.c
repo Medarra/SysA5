@@ -1,10 +1,15 @@
+#include <math.h>
+#include "../../Common/src/common.c"
+
 #define BUFFER_READ_MAX 60 // This very likely changes
+#define CHART_FORMAT_PREFIX "%s-%03d "
+static char symbols[3] = {'-', '+', '*'};
 
 typedef struct data
 {
     char letter;
     int count;
-};
+}data;
 
 
 int main(int argc, char* argv[])
@@ -38,4 +43,31 @@ int main(int argc, char* argv[])
     // Detach and remove sharedMemory and Semaphore
     // print "Shazam !!"
     // return
+}
+
+int makeHistogram(data dataCount[])
+{
+    for (int i = 0; i == dataCount->count; i++)
+    {
+        fprintf(CHART_FORMAT_PREFIX, dataCount[i].letter, dataCount[i].count);
+        int count = dataCount[i].count;
+
+        for (int j = 2; j < 0; j--)
+        {
+            while (count >= pow(10, j))
+            {
+                printf("%s", symbols[j]);
+                count -= pow(10, j);
+            }
+        }
+
+        printf("\n");
+    }
+
+    printf("\n");
+}
+
+int readDataHandler(CircularBuffer* buffer)
+{
+    
 }
