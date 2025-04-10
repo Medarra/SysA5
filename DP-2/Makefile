@@ -11,11 +11,11 @@ BIN_DIR = bin
 
 # Source files
 COMMON_OBJS = ../Common/obj/common.o
-SRCS = $(SRC_DIR)/DP2.c
-OBJS = $(OBJ_DIR)/DP2.o
+SRCS = $(SRC_DIR)/dp-2.c
+OBJS = $(OBJ_DIR)/dp-2.o
 
 # Output executable
-TARGET = $(BIN_DIR)/dp2
+TARGET = $(BIN_DIR)/dp-2
 all: $(TARGET)
 
 # Linking into the final executable
