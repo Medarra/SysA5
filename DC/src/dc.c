@@ -7,7 +7,7 @@
 
 
 #define BUFFER_READ_MAX 60 // This very likely changes
-#define CHART_FORMAT_PREFIX "%s-%03d "
+#define CHART_FORMAT_PREFIX "%c-%03d "
 static char symbols[3] = {'-', '+', '*'};
 static char killIt = 0;
 
@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
         // return -1;
     // }
 
-    data test[3] = {{'A', 27}, {'B', 134}, {'C', 6}};
+    data test[20] = {{'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}};
     makeHistogram(test);
     // Parse and store shID, DP-1s PID and DP-2's PID
     // Attach to shared memory
@@ -74,20 +74,17 @@ int parseArguments(char* argv[], int* shmID, pid_t* dp1, pid_t* dp2)
 
 int makeHistogram(data dataCount[])
 {
-    int dataArraySize = sizeof(&dataCount);
-    int dataObjectSize = sizeof(data);
-    printf("%d, %d", dataArraySize, dataObjectSize);
 
-    for (int i = 0; i == sizeof(dataCount) / sizeof(data); i++)
+    for (int i = 0; i < 20; i++)
     {
-        fprintf(CHART_FORMAT_PREFIX, dataCount[i].letter, dataCount[i].count);
+        printf(CHART_FORMAT_PREFIX, dataCount[i].letter, dataCount[i].count);
         int count = dataCount[i].count;
 
-        for (int j = 2; j < 0; j--)
+        for (int j = 2; j >= 0; j--)
         {
             while (count >= pow(10, j))
             {
-                printf("%s", symbols[j]);
+                printf("%c", symbols[j]);
                 count -= pow(10, j);
             }
         }
