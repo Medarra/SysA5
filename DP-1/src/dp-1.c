@@ -1,18 +1,36 @@
+/*
+*/
+
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
+#include "../../Common/src/common.c"
+
+#define SLEEP_TIME      2           // Number of seconds between letter generation
+#define LETTER_NUM      20          // Number of letter added during letter generation
+
 int main(void)
 {   
-    // Check for existence of shared memory
-    // If not found, create it
-    // Allocates Shared Memory for 256 Character Shared Buffer
-    // As Well as the Read Index and Write Index (head and tail)
+    int shmID; // memory’s ID
 
-    //  Attach to shared memory
-    // Initialize shared memory elements
+    if((shmID = shmget(SEM_KEY,sizeof(CircularBuffer),0)) == -1) {
+        // memory doesn’t exist – create it
+        shmID = shmget(SEM_KEY, sizeof(CircularBuffer), (IPC_CREAT | 0660));
+        if(shmID == -1) {
+            //error
+            return -1;
+        }
+    }
 
-    // Through fork call, launch DP-2 (with shmID as a passed command line argument)
+    CircularBuffer* buffer = shmat(shmID, NULL, 0);
 
     // Check for existance of a semaphore
     // If it doesn't exist, create the semaphore
     // Do we need two semaphores? One for buffer, one for write index?
+
+    // Through fork call, launch DP-2 (with shmID as a passed command line argument)
     
     // Set up signal handler to respond to (or listen for) SIGINT signal
 

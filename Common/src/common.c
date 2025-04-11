@@ -5,26 +5,17 @@
 
 typedef struct
 {
-    char* buffer;
+    char buffer[MAX_BUFFER];
     int head;
     int tail;
-    int maxBuffer;
-}CircularBuffer;
+} CircularBuffer;
 
 struct sembuf lockOP = {0, -1, 0}; // Lock the semaphore
 struct sembuf unlockOP = {0, 1, 0}; // Unlock the semaphore
 
-void initBuffer(CircularBuffer* circular, char* buffer)
-{
-    circular->buffer = buffer;
-    circular->head = 0;
-    circular->tail = 0;
-    circular->maxBuffer = MAX_BUFFER;
-}
-
 int isFull(CircularBuffer* circular)
 {
-    return((circular->head + 1) % circular->maxBuffer) == circular->tail;
+    return((circular->head + 1) % MAX_BUFFER) == circular->tail;
 }
 
 int isEmpty(CircularBuffer* circular)
@@ -40,7 +31,7 @@ int writeBuffer(CircularBuffer* circular, char data)
     }
 
     circular->buffer[circular->head] = data;
-    circular->head = (circular->head + 1) % circular->maxBuffer;
+    circular->head = (circular->head + 1) % MAX_BUFFER;
     return 0;
 }
 
@@ -52,7 +43,7 @@ char readBuffer(CircularBuffer* circular)
     }
 
     char data = circular->buffer[circular->tail];
-    circular->tail = (circular->tail + 1) % circular->maxBuffer;
+    circular->tail = (circular->tail + 1) % MAX_BUFFER;
 }
 
 // Create a New Semaphore
