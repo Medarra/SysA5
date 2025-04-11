@@ -1,8 +1,12 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include <math.h>
 #include <signal.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/shm.h>
+#include <sys/sem.h>
 #include "../../Common/src/common.c"
 
 
@@ -10,6 +14,12 @@
 #define CHART_FORMAT_PREFIX "%c-%03d "
 static char symbols[3] = {'-', '+', '*'};
 static char killIt = 0;
+static pid_t dp1 = 0;
+static pid_t dp2 = 0;
+static CircularBuffer* buffer;
+static int semaphoreID = 0;
+static int readCount = 0;
+static data dataDictionary[20];
 
 typedef struct data
 {
@@ -20,65 +30,129 @@ typedef struct data
 
 int main(int argc, char* argv[])
 {
-    // int* sharedMemoryID;
-    // pid_t* dp1;
-    // pid_t* dp2;
+    int* sharedMemoryID;
 
-    // if (parseArguments(argv, sharedMemoryID, dp1, dp2) < 0)
-    // {
-        // printf("Invalid arguments provided.\n");
-        // return -1;
-    // }
+    if (argc != 4)
+    {
+        printf("Not enough arguments were provided.\n");
+    }
 
-    data test[20] = {{'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}, {'C', 6}, {'A', 27}, {'B', 134}};
-    makeHistogram(test);
-    // Parse and store shID, DP-1s PID and DP-2's PID
-    // Attach to shared memory
+    if (parseArguments(argv, sharedMemoryID) < 0)
+     {
+         printf("Invalid arguments provided.\n");
+         return -1;
+     }
 
-    // Check for semaphore
-    // Set up an array of hashvalues to hold the characters and the respective count
+    buffer = shmat(sharedMemoryID, NULL, 0);
 
-    // Set up signal handler for sigint
+    semaphoreID = getSemaphore();
 
-    // Process Loop (wait for sigint)
-    //   NOTE: This is my thought process initially reading this
-    //   Initialize a sigalarm count (This is probably a static variable)
-    //   set up signalhandler for sigalrm for a function that will
-    //   wake up and read from buffer til set maximum
-    //   call alarm(2)
+    for (int i = 0; i < 20; i++)
+    {
+        dataDictionary->letter = 'A' + i;
+        dataDictionary->count = 0;
+    }
 
-    //   The above bit might need to be set up outside the loop
+    if (signal(SIGINT, sigintHandler) == SIG_ERR)
+    {
+        printf("Error setting up signal for SIGINT.\n");
+        return -1;
+    }
 
-    //   when sigalarm count is => 5
-    //       Call make histogram function
-    //       It'll take the array of hashvalues and make a graph according to the values
+    if (signal(SIGALRM, readDataHandler) == SIG_ERR)
+    {
+        printf("Error setting up signal for SIGALRM.\n");
+        return -1;
+    }
 
+    alarm(2);
 
-    // Send sigint signal to both dp processes
-    // Read remaining data in the buffer
-    // Clear screan and display histogram
+    while (killIt == 0)
+    {
+        if (readCount >= 5)
+        {
+            makeHistogram(dataDictionary);
+            readCount = 0;
+        }
+    }
+    
+    char dataRead;
 
-    // Detach and remove sharedMemory and Semaphore
-    // print "Shazam !!"
-    // return
+    while(!isEmpty(buffer))
+    {
+        dataRead = readBuffer(buffer);
+        (dataDictionary[dataRead - 65]->count)++;
+    }
+
+    clear();
+    makeHistogram();
+
+    shmctl(sharedMemoryID, IPC_RMID, NULL);
+    semctl(semaphoreID, 0, IPC_RMID);
+
+    printf("Shazam !!");
+    return 0;
 }
 
-int parseArguments(char* argv[], int* shmID, pid_t* dp1, pid_t* dp2)
+int isNumeric(const char* str)
 {
-    // Parse Shared Memory
+    if (str == NULL || *str == '\0')
+    {
+        return 0;
+    }
+    while (*str)
+    {
+        if (!isdigit(*str))
+        {
+            return 0;
+        }
 
-    // Parse dp-1 PID
+        str++;
+    }
 
-    // Parse dp-2 PID
+    return 1;
 }
 
-int makeHistogram(data dataCount[])
+int parseArguments(char* argv[], int* shmID)
+{
+    if (!argv || !shmID || !dp1 || !dp2)
+    {
+        fprintf(stderr, "Null pointers passed to parse function.\n");
+        return -1;
+    }
+
+    if (!isNumeric(argv[1]) || atoi(argv[1] < 0))
+    {
+        fprintf(stderr, "Invalid Shared Memory ID. \n");
+        return -1;
+    }
+
+    if (!isNumeric(argv[2]) || atoi(argv[2]) <= 0)
+    {
+        fprintf(stderr, "Invalid DP-1 PID.\n");
+        return -1;
+    }
+
+    if(!isNumeric(argv[3]) || atoi(argv[3]) <= 0)
+    {
+        fprintf(stderr, "Invalid DP-2 PID.\n");
+        return -1;
+    }
+
+    *shmID = atoi(argv[1]);
+    dp1 = atoi(argv[2]);
+    dp2 = atoi(argv[3]);
+
+    return 0;
+}
+
+int makeHistogram()
 {
 
     for (int i = 0; i < 20; i++)
     {
-        printf(CHART_FORMAT_PREFIX, dataCount[i].letter, dataCount[i].count);
-        int count = dataCount[i].count;
+        printf(CHART_FORMAT_PREFIX, dataDictionary[i].letter, dataDictionary[i].count);
+        int count = dataDictionary[i].count;
 
         for (int j = 2; j >= 0; j--)
         {
@@ -95,8 +169,10 @@ int makeHistogram(data dataCount[])
     printf("\n");
 }
 
-int readDataHandler(CircularBuffer* buffer)
+int readDataHandler(int signal)
 {
+    lockSemaphore(semaphoreID);
+
     int currentReadIndex = buffer->head;
     int currentWriteIndex = buffer->tail;
 
@@ -116,15 +192,20 @@ int readDataHandler(CircularBuffer* buffer)
         toBeRead = BUFFER_READ_MAX;
     }
 
+    char dataRead;
+
     for (int i = 0; i >= toBeRead; i++)
     {
-        readBuffer(buffer);
+        dataRead = readBuffer(buffer);
+        (dataDictionary[dataRead - 65]->count)++;
     }
 
+    unlockSemaphore(semaphoreID);
+    readCount++;
     alarm(2);
 }
 
-void sigintHandler(pid_t dp1, pid_t dp2)
+void sigintHandler(int signal)
 {
     kill(dp1, SIGINT);
     kill(dp2, SIGINT);
