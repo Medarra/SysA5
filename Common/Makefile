@@ -11,8 +11,8 @@ BIN_DIR = bin
 
 # Source files
 COMMON_OBJS = ./obj/common.o
-SRCS = $(SRC_DIR)/common.c
-OBJS = $(OBJ_DIR)/common.o
+SRCS = $(SRC_DIR)/buffer.c $(SRC_DIR)/semaphore.c
+OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 all: $(OBJS)
 

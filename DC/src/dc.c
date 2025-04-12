@@ -7,8 +7,15 @@
 #include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
-#include "../../Common/src/common.c"
+#include "../../Common/src/buffer.c"
+#include "../../Common/src/semaphore.c"
 
+
+typedef struct data
+{
+    char letter;
+    int count;
+}data;
 
 #define BUFFER_READ_MAX 60 // This very likely changes
 #define CHART_FORMAT_PREFIX "%c-%03d "
@@ -21,11 +28,11 @@ static int semaphoreID = 0;
 static int readCount = 0;
 static data dataDictionary[20];
 
-typedef struct data
-{
-    char letter;
-    int count;
-}data;
+int isNumeric(const char* str);
+int parseArguments(char* argv[], int* shmID);
+int makeHistogram();
+int readDataHandler(int signal);
+void sigintHandler(int signal);
 
 
 int main(int argc, char* argv[])
@@ -81,10 +88,10 @@ int main(int argc, char* argv[])
     while(!isEmpty(buffer))
     {
         dataRead = readBuffer(buffer);
-        (dataDictionary[dataRead - 65]->count)++;
+        (dataDictionary[dataRead - 65].count)++;
     }
 
-    clear();
+    system("clear");
     makeHistogram();
 
     shmctl(sharedMemoryID, IPC_RMID, NULL);
@@ -173,8 +180,8 @@ int readDataHandler(int signal)
 {
     lockSemaphore(semaphoreID);
 
-    int currentReadIndex = buffer->head;
-    int currentWriteIndex = buffer->tail;
+    int currentReadIndex = buffer->read;
+    int currentWriteIndex = buffer->write;
 
     int toBeRead = 0;
 
@@ -197,7 +204,7 @@ int readDataHandler(int signal)
     for (int i = 0; i >= toBeRead; i++)
     {
         dataRead = readBuffer(buffer);
-        (dataDictionary[dataRead - 65]->count)++;
+        (dataDictionary[dataRead - 65].count)++;
     }
 
     unlockSemaphore(semaphoreID);

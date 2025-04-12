@@ -6,7 +6,8 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#include "../../Common/src/common.c"
+#include "../../Common/src/buffer.c"
+#include "../../Common/src/semaphore.c"
 
 #define SLEEP_TIME      2           // Number of seconds between letter generation
 #define LETTER_NUM      20          // Number of letter added during letter generation
