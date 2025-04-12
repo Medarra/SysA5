@@ -28,8 +28,6 @@ int main(void)
         }
     }
 
-    CircularBuffer* shmBuffer = shmat(shmID, NULL, 0);
-
     // Check if this process is a fork, changing the process to DP-2 if it is
     int result;             // used for testing the forking process and detaching the semaphore
     if (result == 0) {
@@ -61,13 +59,41 @@ int main(void)
         for (int i = 0; i < 20; i++) {
             buffer[i] = (rand() % 20) + 65;
         }
-        // semaphore check
-            // write to shared memory
+
+        if (writeToSHM(shmID, semID, buffer) < 0) {
+            // error
+            return -1;
+        }
+
         sleep(2);
     }
 
     // Detach from shared memory and exit
     shmdt(buffer);
+    return 0;
+}
+
+int writeToSHM(int shmID, int semID, char* buffer) {
+    CircularBuffer* shmBuffer = shmat(shmID, NULL, 0);
+    
+    int result;
+    if ((result = lockSemaphore(semID))) {
+        // error
+        return -1;
+    }
+
+    for (int i = 0; i < 20; i++) {
+        if ((result = writeBuffer(shmBuffer, buffer[i])) < 0) {
+            break;
+        }
+    }
+
+    int result;
+    if ((result = unlockSemaphore(semID))) {
+        // error
+        return -1;
+    }
+
     return 0;
 }
 
