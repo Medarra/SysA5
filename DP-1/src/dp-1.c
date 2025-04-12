@@ -6,12 +6,15 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "../../Common/src/buffer.c"
 #include "../../Common/src/semaphore.c"
 
 #define SLEEP_TIME      2           // Number of seconds between letter generation
-#define LETTER_NUM      20          // Number of letter added during letter generation
+#define LETTER_NUM      20          // Number of letters sent to shared memory
+
+static int endProgram = 0;
 
 int main(void)
 {   
@@ -25,7 +28,7 @@ int main(void)
         }
     }
 
-    CircularBuffer* buffer = shmat(shmID, NULL, 0);
+    CircularBuffer* shmBuffer = shmat(shmID, NULL, 0);
 
     // Check if this process is a fork, changing the process to DP-2 if it is
     int result;             // used for testing the forking process and detaching the semaphore
@@ -39,20 +42,35 @@ int main(void)
     result = fork();
     if (result < 0) {
         //error
+        return -1;
     }
 
-    // Check for existance of a semaphore
-    // If it doesn't exist, create the semaphore
-    // Do we need two semaphores? One for buffer, one for write index?
+    int semID = getSemaphore();
+    if (semID < 0) {
+        // error
+        return -1;
+    }
     
-    // Set up signal handler to respond to (or listen for) SIGINT signal
+    if (signal(SIGINT, sigintHandler) == SIG_ERR) {
+        printf("Error setting up signal for SIGINT.\n");
+        return -1;
+    }
 
-    // While running loop (something regarding the sigint signal)
-    //      Loop 20 times or until  buffer is full
-    //              generate letter (A to T) and write to sharedMemoryBuffer
-    //      Sleep for two seconds
+    char buffer[20];
+    while (endProgram == 0) {
+        for (int i = 0; i < 20; i++) {
+            buffer[i] = (rand() % 20) + 65;
+        }
+        // semaphore check
+            // write to shared memory
+        sleep(2);
+    }
 
     // Detach from shared memory and exit
     shmdt(buffer);
     return 0;
+}
+
+void sigintHandler(int signal) {
+    endProgram = 1;
 }
