@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
 {
     int* sharedMemoryID;
 
-    if (argc != 4)
+    if (argc != 3)
     {
         printf("Not enough arguments were provided.\n");
     }
@@ -49,6 +49,8 @@ int main(int argc, char* argv[])
          printf("Invalid arguments provided.\n");
          return -1;
      }
+
+    dp2 = getppid();
 
     buffer = shmat(sharedMemoryID, NULL, 0);
 
@@ -140,15 +142,8 @@ int parseArguments(char* argv[], int* shmID)
         return -1;
     }
 
-    if(!isNumeric(argv[3]) || atoi(argv[3]) <= 0)
-    {
-        fprintf(stderr, "Invalid DP-2 PID.\n");
-        return -1;
-    }
-
     *shmID = atoi(argv[1]);
     dp1 = atoi(argv[2]);
-    dp2 = atoi(argv[3]);
 
     return 0;
 }
