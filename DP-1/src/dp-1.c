@@ -16,6 +16,9 @@
 
 static int endProgram = 0;
 
+int writeToSHM(int shmID, int semID, char* buffer);
+void sigintHandler(int signal);
+
 int main(void)
 {   
     int shmID; // memory’s ID
@@ -88,7 +91,6 @@ int writeToSHM(int shmID, int semID, char* buffer) {
         }
     }
 
-    int result;
     if ((result = unlockSemaphore(semID))) {
         // error
         return -1;
