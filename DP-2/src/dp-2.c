@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
+#include <time.h>
 #include "../../Common/src/buffer.c"
 #include "../../Common/src/semaphore.c"
 
@@ -36,7 +37,7 @@ int main(int argc, char* argv[])
         char sharedMemoryString[11];
         char parentIdString[11];
 
-        snprintf(sharedMemoryString, sizeof(sharedMemoryString,), "%d", sharedMemoryID);
+        snprintf(sharedMemoryString, sizeof(sharedMemoryString), "%d", sharedMemoryID);
         snprintf(parentIdString, sizeof(parentIdString), "%d", parentId);
 
         execl("./../../DC/bin/dc", "dc", sharedMemoryString, parentIdString, NULL);
@@ -45,14 +46,30 @@ int main(int argc, char* argv[])
     buffer = shmat(sharedMemoryID, NULL, 0);
 
     semaphoreID = getSemaphore();
+
+    if (signal(SIGINT, sigintHandler) == SIG_ERR)
+    {
+        printf("Error setting up signal for SIGINT.\n");
+        return -1;
+    }
+
+    srand((unsigned int)time(NULL));
+    char data;
+
+    while (killIt == 0)
+    {
+        data = generateRandomData();
+
+        lockSemaphore(semaphoreID);
+        writeBuffer(buffer, data);
+        unlockSemaphore(semaphoreID);
+
+        sleep(0.05);
+    }
+
+    shmctl(sharedMemoryID, IPC_RMID, NULL);
     
-    // Set up signal handler to respond to (or listen for) SIGINT signal
-
-    // While running loop (something regarding the sigint signal)
-    //      Generate letter (A to T), and write to buffer
-    //      Sleep for 1/20 of a second
-
-    // Detach from shared memory and exit
+    return 0;
 }
 
 int parseArguments(char* argv[], int* shmID)
@@ -84,4 +101,9 @@ int parseArguments(char* argv[], int* shmID)
 void sigintHandler(int signal)
 {
     killIt = 1;
+}
+
+char generateRandomData()
+{   
+    return 'A' + (rand() % 20);
 }

@@ -1,7 +1,6 @@
-
 # Compiler and flags
 CC = cc
-CFLAGS = -Wall -Iinc -I../Common/inc
+CFLAGS = -Wall -Iinc
 
 # Directories
 SRC_DIR = src
@@ -10,7 +9,6 @@ OBJ_DIR = obj
 BIN_DIR = bin
 
 # Source files
-COMMON_OBJS = ../Common/obj/common.o
 SRCS = $(SRC_DIR)/dp-1.c
 OBJS = $(OBJ_DIR)/dp-1.o
 
@@ -19,9 +17,9 @@ TARGET = $(BIN_DIR)/dp-1
 all: $(TARGET)
 
 # Linking into the final executable
-$(TARGET): $(OBJS) $(COMMON_OBJS)
+$(TARGET): $(OBJS)
 	@mkdir -p $(BIN_DIR)    # Create the bin directory if it doesn't exist
-	$(CC) -o $(TARGET) $(OBJS) $(COMMON_OBJS)
+	$(CC) -o $(TARGET) $(OBJS) -lm
 
 # Compiling .o object files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c

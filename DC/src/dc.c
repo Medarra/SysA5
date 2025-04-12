@@ -122,7 +122,7 @@ int isNumeric(const char* str)
 
 int parseArguments(char* argv[], int* shmID)
 {
-    if (!argv || !shmID || !dp1 || !dp2)
+    if (!argv || !shmID)
     {
         fprintf(stderr, "Null pointers passed to parse function.\n");
         return -1;
