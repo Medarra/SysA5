@@ -1,3 +1,12 @@
+/*
+* Filename:     dp-2.c
+* Project:      SENG2030 -- A-05
+* Programmers:  Curtis Wentzlaff (7274749), Aly Palmer (7382583)
+* Date:         April 11th, 2025
+* Description:  The logic for the data producer two exists here.
+*/
+
+//-------------------------------------------INCLUDES--------------------------------------------//
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -9,11 +18,20 @@
 #include "../../Common/src/buffer.c"
 #include "../../Common/src/semaphore.c"
 
+
+//-------------------------------------------CONSTANTS-------------------------------------------//
 static pid_t dp1 = 0;
 static int semaphoreID = 0;
 static CircularBuffer* buffer;
 static char killIt = 0;
 
+//-----------------------------------------PROTOTYPES--------------------------------------------//
+int parseArguments(char* argv[], int* shmID);
+void sigintHandler(int signal);
+char generateRandomData();
+int isNumeric(const char* str);
+
+//------------------------------------MAIN FUNCTION----------------------------------------------//
 int main(int argc, char* argv[])
 {
     int* sharedMemoryID;
@@ -72,6 +90,29 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+//------------------------------------HELPER FUNCTIONS-------------------------------------------//
+
+// Checks to make sure argument being passed is numeric
+int isNumeric(const char* str)
+{
+    if (str == NULL || *str == '\0')
+    {
+        return 0;
+    }
+    while (*str)
+    {
+        if (!isdigit(*str))
+        {
+            return 0;
+        }
+
+        str++;
+    }
+
+    return 1;
+}
+
+// Parse command line arguments
 int parseArguments(char* argv[], int* shmID)
 {
     if (!argv || !shmID || !dp1)
@@ -98,11 +139,13 @@ int parseArguments(char* argv[], int* shmID)
     return 0;
 }
 
+// Signal Handler for SIGINT and it sets the flag to kill the process
 void sigintHandler(int signal)
 {
     killIt = 1;
 }
 
+// Randomly generates character 'A' to 'T'
 char generateRandomData()
 {   
     return 'A' + (rand() % 20);

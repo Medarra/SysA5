@@ -1,3 +1,13 @@
+/*
+* Filename:     dc.c
+* Project:      SENG2030 -- A-05
+* Programmers:  Curtis Wentzlaff (7274749), Aly Palmer (7382583)
+* Date:         April 11th, 2025
+* Description:  The logic for the data consumer exist in this file, and
+*               the creating of the histograms.
+*/
+
+//-------------------------------------------INCLUDES--------------------------------------------//
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -10,15 +20,17 @@
 #include "../../Common/src/buffer.c"
 #include "../../Common/src/semaphore.c"
 
-
+//-------------------------------------------STRUCTS---------------------------------------------//
 typedef struct data
 {
     char letter;
     int count;
 }data;
 
+//-------------------------------------------CONSTANTS-------------------------------------------//
 #define BUFFER_READ_MAX 60 // This very likely changes
 #define CHART_FORMAT_PREFIX "%c-%03d "
+
 static char symbols[3] = {'-', '+', '*'};
 static char killIt = 0;
 static pid_t dp1 = 0;
@@ -28,13 +40,14 @@ static int semaphoreID = 0;
 static int readCount = 0;
 static data dataDictionary[20];
 
+//-----------------------------------------PROTOTYPES--------------------------------------------//
 int isNumeric(const char* str);
 int parseArguments(char* argv[], int* shmID);
 int makeHistogram();
 int readDataHandler(int signal);
 void sigintHandler(int signal);
 
-
+//------------------------------------MAIN FUNCTION----------------------------------------------//
 int main(int argc, char* argv[])
 {
     int* sharedMemoryID;
@@ -103,6 +116,9 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+//------------------------------------HELPER FUNCTIONS-------------------------------------------//
+
+// Checks to make sure argument being passed is numeric
 int isNumeric(const char* str)
 {
     if (str == NULL || *str == '\0')
@@ -122,6 +138,7 @@ int isNumeric(const char* str)
     return 1;
 }
 
+// Parses the Command Line Arguments
 int parseArguments(char* argv[], int* shmID)
 {
     if (!argv || !shmID)
@@ -148,6 +165,7 @@ int parseArguments(char* argv[], int* shmID)
     return 0;
 }
 
+// Prints the histogram to the console.
 int makeHistogram()
 {
 
@@ -171,6 +189,7 @@ int makeHistogram()
     printf("\n");
 }
 
+// SignalHandler for SIGALRM, reads data until there isn't any, or the maximum read value is hit, then sets alarm.
 int readDataHandler(int signal)
 {
     lockSemaphore(semaphoreID);
@@ -204,9 +223,12 @@ int readDataHandler(int signal)
 
     unlockSemaphore(semaphoreID);
     readCount++;
+
     alarm(2);
 }
 
+//Signal Handler for SIGINT. Kills the DP-1 and DP-2 processes, and sets the flag to leave
+//processing loop.
 void sigintHandler(int signal)
 {
     kill(dp1, SIGINT);
