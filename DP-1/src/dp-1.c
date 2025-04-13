@@ -16,7 +16,7 @@
 
 static int endProgram = 0;
 
-int writeToSHM(int shmID, int semID, char* buffer);
+int writeToSHM(CircularBuffer* shmBuffer, int semID, char* buffer);
 void sigintHandler(int signal);
 
 int main(void)
@@ -40,6 +40,9 @@ int main(void)
         return -1;
     }
 
+    int pid= getpid();
+    printf("DP-1: %d\n", pid);
+
     // Fork to create DP-2
     int result = fork();
     if (result < 0) {
@@ -51,13 +54,14 @@ int main(void)
         // This is the child — become DP-2
         char idString[11];
         snprintf(idString, sizeof(idString), "%d", shmID);
-        execl("./../DP-2/bin/dp-2", "dp-2", idString, NULL);
+        execl("./../../DP-2/bin/dp-2", "dp-2", idString, NULL);
         // If execl fails:
         perror("execl to dp-2 failed");
         exit(EXIT_FAILURE);
     }
 
     // Parent continues as DP-1
+    printf("We made it. PID:%d\n", pid);
     int semID = getSemaphore();
     if (semID < 0) {
         perror("Failed to get semaphore");

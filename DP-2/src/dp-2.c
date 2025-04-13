@@ -46,6 +46,9 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    int pid= getpid();
+    printf("DP-2: %d\n", pid);
+
     // Get parent PID (DP-1) using getppid()
     pid_t parentId = getppid();
 
@@ -74,6 +77,7 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
+    printf("We made it. PID:%d\n", pid);
     // DP-2 logic continues
     int semaphoreID = getSemaphore();
     if (semaphoreID < 0) {
@@ -128,7 +132,7 @@ int isNumeric(const char* str)
 }
 
 // Parse command line arguments
-iint parseArguments(char* argv[], int* shmID)
+int parseArguments(char* argv[], int* shmID)
 {
     if (!argv || !shmID)
     {

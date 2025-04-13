@@ -51,10 +51,15 @@ void sigintHandler(int signal);
 int main(int argc, char* argv[])
 {
     int* sharedMemoryID;
+    int pid;
+
+    pid = getpid();
+    printf("DC PID:%d\n", pid);
 
     if (argc != 3)
     {
         printf("Not enough arguments were provided.\n");
+        return -1;
     }
 
     if (parseArguments(argv, sharedMemoryID) < 0)
