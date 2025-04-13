@@ -70,9 +70,11 @@ int main(int argc, char* argv[])
         // Child becomes DC
         char shmIDStr[11];
         snprintf(shmIDStr, sizeof(shmIDStr), "%d", sharedMemoryID);
+        char parentidString[11];
+        snprintf(parentidString, sizeof(parentidString), "%d", parentId);
 
         // Start DC process
-        execl("./../../DC/bin/dc", "dc", shmIDStr, NULL);
+        execl("./../../DC/bin/dc", "dc", shmIDStr, parentidString, NULL);
         perror("execl to dc failed");
         exit(EXIT_FAILURE);
     }

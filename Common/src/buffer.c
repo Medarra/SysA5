@@ -42,7 +42,6 @@ int writeBuffer(CircularBuffer* circular, char data)
 {
     if (isFull(circular))
     {
-        printf("Buffer full.\n");
         return -1;
     }
 
@@ -60,6 +59,8 @@ char readBuffer(CircularBuffer* circular)
         return '\0';
     }
 
+    
     char data = circular->buffer[circular->read];
+    printf("Read %c\n", data);
     circular->read = (circular->read + 1) % MAX_BUFFER;
 }
