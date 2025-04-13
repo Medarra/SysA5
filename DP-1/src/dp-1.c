@@ -21,39 +21,53 @@ void sigintHandler(int signal);
 
 int main(void)
 {   
-    int shmID; // memory’s ID
-    if((shmID = shmget(SEM_KEY,sizeof(CircularBuffer),0)) == -1) {
-        // memory doesn’t exist – create it
+    int shmID;
+
+    // Try to get shared memory
+    if ((shmID = shmget(SEM_KEY, sizeof(CircularBuffer), 0)) == -1) {
+        // If it doesn't exist, create it
         shmID = shmget(SEM_KEY, sizeof(CircularBuffer), (IPC_CREAT | 0660));
-        if(shmID == -1) {
-            //error
+        if (shmID == -1) {
+            perror("Failed to create shared memory");
             return -1;
         }
     }
 
-    // Check if this process is a fork, changing the process to DP-2 if it is
-    int result;             // used for testing the forking process and detaching the semaphore
-    if (result == 0) {
-        char idString[11] = { '\0' };
-        sprintf(idString,"%d", shmID);
-        execl("./../DP-2/bin/dp-2", "dp-2", idString, NULL);
-    }
-
-    // Attempt to fork the process
-    result = fork();
-    if (result < 0) {
-        //error
+    // Attach to shared memory
+    CircularBuffer* shmBuffer = shmat(shmID, NULL, 0);
+    if (shmBuffer == (void*)-1) {
+        perror("Shmat failed in DP-1");
         return -1;
     }
 
+    // Fork to create DP-2
+    int result = fork();
+    if (result < 0) {
+        perror("Fork failed");
+        shmdt(shmBuffer);
+        return -1;
+    }
+    else if (result == 0) {
+        // This is the child — become DP-2
+        char idString[11];
+        snprintf(idString, sizeof(idString), "%d", shmID);
+        execl("./../DP-2/bin/dp-2", "dp-2", idString, NULL);
+        // If execl fails:
+        perror("execl to dp-2 failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Parent continues as DP-1
     int semID = getSemaphore();
     if (semID < 0) {
-        // error
+        perror("Failed to get semaphore");
+        shmdt(shmBuffer);
         return -1;
     }
-    
+
     if (signal(SIGINT, sigintHandler) == SIG_ERR) {
         printf("Error setting up signal for SIGINT.\n");
+        shmdt(shmBuffer);
         return -1;
     }
 
@@ -63,40 +77,37 @@ int main(void)
             buffer[i] = (rand() % 20) + 65;
         }
 
-        if (writeToSHM(shmID, semID, buffer) < 0) {
-            // error
-            return -1;
+        if (writeToSHM(shmBuffer, semID, buffer) < 0) {
+            printf("Error writing to shared memory\n");
+            break;
         }
 
         sleep(2);
     }
 
-    // Detach from shared memory and exit
-    shmdt(buffer);
+    // Clean up
+    shmdt(shmBuffer);
     return 0;
 }
 
-int writeToSHM(int shmID, int semID, char* buffer) {
-    CircularBuffer* shmBuffer = shmat(shmID, NULL, 0);
-    
-    int result;
-    if ((result = lockSemaphore(semID))) {
-        // error
+int writeToSHM(CircularBuffer* shmBuffer, int semID, char* buffer) {
+    if (lockSemaphore(semID) < 0) {
         return -1;
     }
 
+    int result = 0;
     for (int i = 0; i < 20; i++) {
-        if ((result = writeBuffer(shmBuffer, buffer[i])) < 0) {
+        result = writeBuffer(shmBuffer, buffer[i]);
+        if (result < 0) {
             break;
         }
     }
 
-    if ((result = unlockSemaphore(semID))) {
-        // error
-        return -1;
+    if (unlockSemaphore(semID) < 0) {
+        result = -1;
     }
 
-    return 0;
+    return result;
 }
 
 void sigintHandler(int signal) {

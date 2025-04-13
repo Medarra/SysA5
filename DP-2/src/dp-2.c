@@ -34,59 +34,74 @@ int isNumeric(const char* str);
 //------------------------------------MAIN FUNCTION----------------------------------------------//
 int main(int argc, char* argv[])
 {
-    int* sharedMemoryID;
+    int sharedMemoryID;
 
-    if (argc != 3)
-    {
-        printf("Not enough arguments were provided.\n");
+    if (argc != 2) {
+        printf("Usage: %s <shmID>\n", argv[0]);
+        return -1;
     }
 
-    if (parseArguments(argv, sharedMemoryID) < 0)
-     {
-         printf("Invalid arguments provided.\n");
-         return -1;
-     }
+    if (parseArguments(argv, &sharedMemoryID) < 0) {
+        printf("Invalid arguments provided.\n");
+        return -1;
+    }
 
+    // Get parent PID (DP-1) using getppid()
     pid_t parentId = getppid();
 
-    int result;
-    if (result == 0)
-    {
-        char sharedMemoryString[11];
-        char parentIdString[11];
-
-        snprintf(sharedMemoryString, sizeof(sharedMemoryString), "%d", sharedMemoryID);
-        snprintf(parentIdString, sizeof(parentIdString), "%d", parentId);
-
-        execl("./../../DC/bin/dc", "dc", sharedMemoryString, parentIdString, NULL);
+    // Attach to shared memory
+    CircularBuffer* buffer = shmat(sharedMemoryID, NULL, 0);
+    if (buffer == (void*)-1) {
+        perror("shmat failed in DP-2");
+        return -1;
     }
-    
-    buffer = shmat(sharedMemoryID, NULL, 0);
 
-    semaphoreID = getSemaphore();
+    // Fork to create DC
+    int result = fork();
+    if (result < 0) {
+        perror("fork failed in DP-2");
+        shmdt(buffer);
+        return -1;
+    }
+    else if (result == 0) {
+        // Child becomes DC
+        char shmIDStr[11];
+        snprintf(shmIDStr, sizeof(shmIDStr), "%d", sharedMemoryID);
 
-    if (signal(SIGINT, sigintHandler) == SIG_ERR)
-    {
+        // Start DC process
+        execl("./../../DC/bin/dc", "dc", shmIDStr, NULL);
+        perror("execl to dc failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // DP-2 logic continues
+    int semaphoreID = getSemaphore();
+    if (semaphoreID < 0) {
+        perror("Failed to get semaphore in DP-2");
+        shmdt(buffer);
+        return -1;
+    }
+
+    if (signal(SIGINT, sigintHandler) == SIG_ERR) {
         printf("Error setting up signal for SIGINT.\n");
+        shmdt(buffer);
         return -1;
     }
 
     srand((unsigned int)time(NULL));
     char data;
 
-    while (killIt == 0)
-    {
+    while (killIt == 0) {
         data = generateRandomData();
 
         lockSemaphore(semaphoreID);
         writeBuffer(buffer, data);
         unlockSemaphore(semaphoreID);
 
-        sleep(0.05);
+        usleep(50000);
     }
 
-    shmctl(sharedMemoryID, IPC_RMID, NULL);
-    
+    shmdt(buffer);
     return 0;
 }
 
@@ -113,28 +128,21 @@ int isNumeric(const char* str)
 }
 
 // Parse command line arguments
-int parseArguments(char* argv[], int* shmID)
+iint parseArguments(char* argv[], int* shmID)
 {
-    if (!argv || !shmID || !dp1)
+    if (!argv || !shmID)
     {
         fprintf(stderr, "Null pointers passed to parse function.\n");
         return -1;
     }
 
-    if (!isNumeric(argv[1]) || atoi(argv[1] < 0))
+    if (!isNumeric(argv[1]) || atoi(argv[1]) < 0)
     {
-        fprintf(stderr, "Invalid Shared Memory ID. \n");
-        return -1;
-    }
-
-    if (!isNumeric(argv[2]) || atoi(argv[2]) <= 0)
-    {
-        fprintf(stderr, "Invalid DP-1 PID.\n");
+        fprintf(stderr, "Invalid Shared Memory ID.\n");
         return -1;
     }
 
     *shmID = atoi(argv[1]);
-    dp1 = atoi(argv[2]);
 
     return 0;
 }
