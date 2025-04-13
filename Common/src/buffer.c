@@ -62,4 +62,6 @@ char readBuffer(CircularBuffer* circular)
     
     char data = circular->buffer[circular->read];
     circular->read = (circular->read + 1) % MAX_BUFFER;
+
+    return data;
 }

@@ -20,9 +20,6 @@
 
 
 //-------------------------------------------CONSTANTS-------------------------------------------//
-static pid_t dp1 = 0;
-static int semaphoreID = 0;
-static CircularBuffer* buffer;
 static char killIt = 0;
 
 //-----------------------------------------PROTOTYPES--------------------------------------------//
@@ -45,8 +42,6 @@ int main(int argc, char* argv[])
         printf("Invalid arguments provided.\n");
         return -1;
     }
-
-    int pid= getpid();
 
     // Get parent PID (DP-1) using getppid()
     pid_t parentId = getppid();
