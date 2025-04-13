@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
+#include <sys/wait.h>
 #include <time.h>
 #include "../../Common/src/buffer.c"
 #include "../../Common/src/semaphore.c"
@@ -53,6 +54,12 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    if (signal(SIGINT, sigintHandler) == SIG_ERR) {
+        printf("Error setting up signal for SIGINT.\n");
+        shmdt(buffer);
+        return -1;
+    }
+
     // Fork to create DC
     int result = fork();
     if (result < 0) {
@@ -73,7 +80,8 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    // DP-2 logic continues
+    // DP-2 logic continues in the parent process
+
     int semaphoreID = getSemaphore();
     if (semaphoreID < 0) {
         perror("Failed to get semaphore in DP-2");
@@ -81,15 +89,10 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    if (signal(SIGINT, sigintHandler) == SIG_ERR) {
-        printf("Error setting up signal for SIGINT.\n");
-        shmdt(buffer);
-        return -1;
-    }
-
     srand((unsigned int)time(NULL));
     char data;
 
+    // DP-2 keeps running until killIt is set to 1
     while (killIt == 0) {
         data = generateRandomData();
 
@@ -97,8 +100,10 @@ int main(int argc, char* argv[])
         writeBuffer(buffer, data);
         unlockSemaphore(semaphoreID);
 
-        usleep(50000);
+        usleep(50000); // Sleep for 50ms before writing more data
     }
+
+    wait(NULL);
 
     shmdt(buffer);
     return 0;
@@ -149,6 +154,7 @@ int parseArguments(char* argv[], int* shmID)
 // Signal Handler for SIGINT and it sets the flag to kill the process
 void sigintHandler(int signal)
 {
+    printf("Gonna die now\n");
     killIt = 1;
 }
 

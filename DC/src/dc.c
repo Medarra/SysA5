@@ -59,6 +59,10 @@ int main(int argc, char* argv[])
 
     dp2 = getppid();
 
+    printf("DC: my PID = %d\n", getpid());
+    printf("DC: dp1 PID = %d\n", dp1);
+    printf("DC: dp2 PID = %d\n", dp2);
+
     buffer = shmat(sharedMemoryID, NULL, 0);
     if (buffer == (void*)-1)
     {
