@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <unistd.h>
@@ -48,6 +49,12 @@ int main(void)
         return -1;
     }
 
+    // Setup the signal for shutting down
+    if (signal(SIGINT, sigintHandler) == SIG_ERR) {
+        printf("Error setting up signal for SIGINT.\n");
+        shmdt(shmBuffer);
+        return -1;
+    }
 
     // Fork to create DP-2
     int result = fork();
@@ -74,13 +81,6 @@ int main(void)
         return -1;
     }
 
-    // Setup the signal for shutting down
-    if (signal(SIGINT, sigintHandler) == SIG_ERR) {
-        printf("Error setting up signal for SIGINT.\n");
-        shmdt(shmBuffer);
-        return -1;
-    }
-
     // Main Loop
     char buffer[20];
     while (endProgram == 0) {
@@ -97,6 +97,9 @@ int main(void)
 
         sleep(2);
     }
+
+
+    wait(NULL);
 
     // Clean up
     shmdt(shmBuffer);
