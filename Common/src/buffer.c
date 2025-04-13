@@ -42,11 +42,13 @@ int writeBuffer(CircularBuffer* circular, char data)
 {
     if (isFull(circular))
     {
+        printf("Buffer full.\n");
         return -1;
     }
 
     circular->buffer[circular->write] = data;
     circular->write = (circular->write + 1) % MAX_BUFFER;
+    printf("Printed %c in %d spot.\n", data, circular->write);
     return 0;
 }
 
