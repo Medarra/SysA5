@@ -108,10 +108,10 @@ int writeToSHM(CircularBuffer* shmBuffer, int semID, char* buffer) {
     }
 
     if (unlockSemaphore(semID) < 0) {
-        result = -1;
+        return -1;
     }
 
-    return result;
+    return 0;
 }
 
 void sigintHandler(int signal) {
