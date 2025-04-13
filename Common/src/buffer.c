@@ -6,6 +6,7 @@
 * Description:  This is where the buffer structure and functionality is stored.
 */
 
+
 //-------------------------------------------CONSTANTS-------------------------------------------//
 #define MAX_BUFFER 256
 
@@ -47,7 +48,6 @@ int writeBuffer(CircularBuffer* circular, char data)
 
     circular->buffer[circular->write] = data;
     circular->write = (circular->write + 1) % MAX_BUFFER;
-    printf("Printed %c in %d spot.\n", data, circular->write);
     return 0;
 }
 
@@ -61,6 +61,5 @@ char readBuffer(CircularBuffer* circular)
 
     
     char data = circular->buffer[circular->read];
-    printf("Read %c\n", data);
     circular->read = (circular->read + 1) % MAX_BUFFER;
 }

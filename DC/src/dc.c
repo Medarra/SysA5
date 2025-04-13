@@ -21,18 +21,17 @@
 #include "../../Common/src/semaphore.c"
 
 //-------------------------------------------STRUCTS---------------------------------------------//
-typedef struct data
-{
+typedef struct data {
     char letter;
     int count;
-}data;
+} data;
 
 //-------------------------------------------CONSTANTS-------------------------------------------//
-#define BUFFER_READ_MAX 60 // This very likely changes
+#define BUFFER_READ_MAX 60
 #define CHART_FORMAT_PREFIX "%c-%03d "
 
-static char symbols[3] = {'-', '+', '*'};
-static char killIt = 0;
+static char symbols[3] = { '-', '+', '*' };
+static volatile char killIt = 0;
 static pid_t dp1 = 0;
 static pid_t dp2 = 0;
 static CircularBuffer* buffer;
@@ -44,71 +43,73 @@ static data dataDictionary[20];
 int isNumeric(const char* str);
 int parseArguments(char* argv[], int* shmID);
 int makeHistogram();
-int readDataHandler(int signal);
+void readDataHandler(int signal);
 void sigintHandler(int signal);
 
 //------------------------------------MAIN FUNCTION----------------------------------------------//
 int main(int argc, char* argv[])
 {
-    int* sharedMemoryID;
-    int pid;
+    int sharedMemoryID;
 
-    pid = getpid();
-    printf("DC PID:%d\n", pid);
+    int pid = getpid();
 
-    if (argc != 3)
-    {
+    if (argc != 3) {
         printf("Not enough arguments were provided.\n");
         return -1;
     }
 
-    if (parseArguments(argv, sharedMemoryID) < 0)
-     {
-         printf("Invalid arguments provided.\n");
-         return -1;
-     }
+    if (parseArguments(argv, &sharedMemoryID) < 0) {
+        printf("Invalid arguments provided.\n");
+        return -1;
+    }
 
     dp2 = getppid();
 
     buffer = shmat(sharedMemoryID, NULL, 0);
-
-    semaphoreID = getSemaphore();
-
-    for (int i = 0; i < 20; i++)
-    {
-        dataDictionary->letter = 'A' + i;
-        dataDictionary->count = 0;
+    if (buffer == (void*)-1) {
+        perror("Failed to attach to shared memory");
+        return -1;
     }
 
-    if (signal(SIGINT, sigintHandler) == SIG_ERR)
-    {
+    semaphoreID = getSemaphore();
+    if (semaphoreID < 0) {
+        perror("Failed to get semaphore");
+        return -1;
+    }
+
+    for (int i = 0; i < 20; i++) {
+        dataDictionary[i].letter = 'A' + i;
+        dataDictionary[i].count = 0;
+    }
+
+    if (signal(SIGINT, sigintHandler) == SIG_ERR) {
         printf("Error setting up signal for SIGINT.\n");
         return -1;
     }
 
-    if (signal(SIGALRM, readDataHandler) == SIG_ERR)
-    {
+    if (signal(SIGALRM, readDataHandler) == SIG_ERR) {
         printf("Error setting up signal for SIGALRM.\n");
         return -1;
     }
 
     alarm(2);
 
-    while (killIt == 0)
-    {
-        if (readCount >= 5)
-        {
-            makeHistogram(dataDictionary);
+    while (!killIt) {
+        pause(); // Wait for signals
+
+        if (readCount >= 5) {
+            makeHistogram();
             readCount = 0;
         }
     }
-    
-    char dataRead;
 
-    while(!isEmpty(buffer))
-    {
+    // Final data drain
+    char dataRead;
+    while (!isEmpty(buffer)) {
         dataRead = readBuffer(buffer);
-        (dataDictionary[dataRead - 65].count)++;
+        if (dataRead >= 'A' && dataRead < 'A' + 20) {
+            dataDictionary[dataRead - 'A'].count++;
+        }
     }
 
     system("clear");
@@ -117,49 +118,41 @@ int main(int argc, char* argv[])
     shmctl(sharedMemoryID, IPC_RMID, NULL);
     semctl(semaphoreID, 0, IPC_RMID);
 
-    printf("Shazam !!");
+    printf("Shazam !!\n");
     return 0;
 }
 
 //------------------------------------HELPER FUNCTIONS-------------------------------------------//
 
-// Checks to make sure argument being passed is numeric
 int isNumeric(const char* str)
 {
-    if (str == NULL || *str == '\0')
-    {
+    if (str == NULL || *str == '\0') {
         return 0;
     }
-    while (*str)
-    {
-        if (!isdigit(*str))
-        {
+
+    while (*str) {
+        if (!isdigit(*str)) {
             return 0;
         }
-
         str++;
     }
 
     return 1;
 }
 
-// Parses the Command Line Arguments
 int parseArguments(char* argv[], int* shmID)
 {
-    if (!argv || !shmID)
-    {
+    if (!argv || !shmID) {
         fprintf(stderr, "Null pointers passed to parse function.\n");
         return -1;
     }
 
-    if (!isNumeric(argv[1]) || atoi(argv[1] < 0))
-    {
-        fprintf(stderr, "Invalid Shared Memory ID. \n");
+    if (!isNumeric(argv[1]) || atoi(argv[1]) < 0) {
+        fprintf(stderr, "Invalid Shared Memory ID.\n");
         return -1;
     }
 
-    if (!isNumeric(argv[2]) || atoi(argv[2]) <= 0)
-    {
+    if (!isNumeric(argv[2]) || atoi(argv[2]) <= 0) {
         fprintf(stderr, "Invalid DP-1 PID.\n");
         return -1;
     }
@@ -170,19 +163,14 @@ int parseArguments(char* argv[], int* shmID)
     return 0;
 }
 
-// Prints the histogram to the console.
 int makeHistogram()
 {
-
-    for (int i = 0; i < 20; i++)
-    {
+    for (int i = 0; i < 20; i++) {
         printf(CHART_FORMAT_PREFIX, dataDictionary[i].letter, dataDictionary[i].count);
         int count = dataDictionary[i].count;
 
-        for (int j = 2; j >= 0; j--)
-        {
-            while (count >= pow(10, j))
-            {
+        for (int j = 2; j >= 0; j--) {
+            while (count >= pow(10, j)) {
                 printf("%c", symbols[j]);
                 count -= pow(10, j);
             }
@@ -192,10 +180,10 @@ int makeHistogram()
     }
 
     printf("\n");
+    return 0;
 }
 
-// SignalHandler for SIGALRM, reads data until there isn't any, or the maximum read value is hit, then sets alarm.
-int readDataHandler(int signal)
+void readDataHandler(int signal)
 {
     lockSemaphore(semaphoreID);
 
@@ -204,36 +192,31 @@ int readDataHandler(int signal)
 
     int toBeRead = 0;
 
-    if (currentReadIndex <= currentWriteIndex)
-    {
+    if (currentReadIndex <= currentWriteIndex) {
         toBeRead = currentWriteIndex - currentReadIndex;
-    }
-    else
-    {
+    } else {
         toBeRead = (MAX_BUFFER - currentReadIndex) + currentWriteIndex;
     }
 
-    if (toBeRead > BUFFER_READ_MAX)
-    {
+    if (toBeRead > BUFFER_READ_MAX) {
         toBeRead = BUFFER_READ_MAX;
     }
 
     char dataRead;
 
-    for (int i = 0; i >= toBeRead; i++)
-    {
+    for (int i = 0; i < toBeRead; i++) {
         dataRead = readBuffer(buffer);
-        (dataDictionary[dataRead - 65].count)++;
+        if (dataRead >= 'A' && dataRead < 'A' + 20) {
+            dataDictionary[dataRead - 'A'].count++;
+        }
     }
 
     unlockSemaphore(semaphoreID);
-    readCount++;
 
+    readCount++;
     alarm(2);
 }
 
-//Signal Handler for SIGINT. Kills the DP-1 and DP-2 processes, and sets the flag to leave
-//processing loop.
 void sigintHandler(int signal)
 {
     kill(dp1, SIGINT);
